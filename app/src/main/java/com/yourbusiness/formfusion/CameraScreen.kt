@@ -15,8 +15,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,9 +29,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.yourbusiness.formfusion.camera.CameraPreview
 import com.yourbusiness.formfusion.pose.PoseAnalyzer
-import com.yourbusiness.formfusion.pose.StubPoseDetector
+import com.yourbusiness.formfusion.viewmodel.CameraViewModel
 import java.util.concurrent.Executors
 
+// Pure View: detector selection and frame/landmark counting live in CameraViewModel.
+// Camera permission state stays here — it's Android UI plumbing (ActivityResult APIs),
+// not business logic.
 @Composable
 fun CameraScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -65,8 +68,8 @@ fun CameraScreen(onBack: () -> Unit) {
         return
     }
 
-    var frameCount by remember { mutableIntStateOf(0) }
-    var lastLandmarkCount by remember { mutableIntStateOf(0) }
+    val viewModel = remember { CameraViewModel() }
+    val uiState by viewModel.uiState.collectAsState()
 
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     val controller = remember {
@@ -75,10 +78,9 @@ fun CameraScreen(onBack: () -> Unit) {
             setImageAnalysisBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             setImageAnalysisAnalyzer(
                 analysisExecutor,
-                PoseAnalyzer(StubPoseDetector()) { landmarks ->
+                PoseAnalyzer(viewModel.detector) { landmarks ->
                     ContextCompat.getMainExecutor(context).execute {
-                        frameCount++
-                        lastLandmarkCount = landmarks.size
+                        viewModel.onFrameAnalyzed(landmarks)
                     }
                 }
             )
@@ -90,6 +92,7 @@ fun CameraScreen(onBack: () -> Unit) {
         onDispose {
             controller.unbind()
             analysisExecutor.shutdown()
+            viewModel.dispose()
         }
     }
 
@@ -97,7 +100,7 @@ fun CameraScreen(onBack: () -> Unit) {
         CameraPreview(controller = controller, modifier = Modifier.fillMaxSize())
 
         Text(
-            text = "Frames analyzed: $frameCount  |  landmarks: $lastLandmarkCount",
+            text = "Frames analyzed: ${uiState.frameCount}  |  landmarks: ${uiState.lastLandmarkCount}",
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(16.dp)

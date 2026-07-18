@@ -16,6 +16,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {
@@ -55,6 +71,19 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // QR CODE GENERATION (host shows a QR code) — pure Kotlin/Java, no JNI
+    implementation("com.google.zxing:core:3.5.3")
+
+    // QR CODE SCANNING (join — ML Kit's ready-made scanner UI, no custom camera screen)
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+
+    // WEBSOCKET (server on host phone, client on follower phone)
+    implementation("org.java-websocket:Java-WebSocket:1.5.6")
+
+    // COROUTINES (async WebSocket + shared state)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

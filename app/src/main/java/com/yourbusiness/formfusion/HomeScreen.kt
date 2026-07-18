@@ -20,7 +20,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
         Button(onClick = { onNavigate(Screen.Camera) }) {
             Text("Start Solo")
         }
-        Button(onClick = { onNavigate(Screen.MultiPhonePlaceholder) }) {
+        Button(onClick = { onNavigate(Screen.Role) }) {
             Text("Start with Other Phones")
         }
     }
