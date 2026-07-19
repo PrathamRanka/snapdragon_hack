@@ -29,6 +29,7 @@ services:
       FORMFUSION_ML_SERVICE_KEY: ${FORMFUSION_ML_SERVICE_KEY:-local-ml-service-key-change-before-production}
       FORMFUSION_JOIN_CODE_SECRET: ${FORMFUSION_JOIN_CODE_SECRET:-local-join-code-secret-change-before-production}
       FORMFUSION_DATABASE_PATH: /data/formfusion.sqlite3
+      FORMFUSION_ML_CALIBRATION_TIMEOUT_SECONDS: 180
     volumes:
       - backend_data:/data
     ports:

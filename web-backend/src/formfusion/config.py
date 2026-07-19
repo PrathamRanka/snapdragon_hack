@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     join_code_secret: str = "local-join-code-secret-change-before-production"
     database_path: Path = Path(".data/formfusion.sqlite3")
     ml_request_timeout_seconds: float = Field(default=30.0, ge=1.0, le=300.0)
+    ml_calibration_timeout_seconds: float = Field(default=180.0, ge=30.0, le=600.0)
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":

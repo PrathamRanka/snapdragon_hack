@@ -17,6 +17,7 @@ from formfusion.services.synchronizer import SyncedPair
 
 class MlClient:
     def __init__(self, settings: Settings) -> None:
+        self._calibration_timeout = settings.ml_calibration_timeout_seconds
         self._client = httpx.AsyncClient(
             base_url=settings.ml_service_url.rstrip("/"),
             headers={"X-ML-Service-Key": settings.ml_service_key},
@@ -108,6 +109,7 @@ class MlClient:
             "POST",
             f"/v1/sessions/{session_id}/calibration/finalize",
             json=request.model_dump(mode="json"),
+            timeout=self._calibration_timeout,
         )
         return CalibrationResponse(
             session_id=session_id,
