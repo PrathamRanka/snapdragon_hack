@@ -8,17 +8,21 @@ class AiNotConfigured(RuntimeError):
     pass
 
 
+def _realtime_fallback(request: RealtimeFeedbackRequest) -> tuple[str, str, str]:
+    cue = (
+        "Good control—maintain the same tempo."
+        if request.form_quality == "good"
+        else "Slow down and keep the tracked joint aligned."
+    )
+    return cue, "biomechanics", "rule-based-v1"
+
+
 def get_realtime_status(
     request: RealtimeFeedbackRequest,
     settings: Settings,
 ) -> tuple[str, str, str]:
     if not settings.google_api_key:
-        cue = (
-            "Good control—maintain the same tempo."
-            if request.form_quality == "good"
-            else "Slow down and keep the tracked joint aligned."
-        )
-        return cue, "biomechanics", "rule-based-v1"
+        return _realtime_fallback(request)
     prompt = (
         "You are a concise exercise coach. Give one actionable cue in no more than 10 words. "
         f"Exercise: {request.exercise}. Angle: {request.primary_angle_degrees}. "
@@ -26,7 +30,8 @@ def get_realtime_status(
         f"Current form assessment: {request.form_quality}. Language: {request.language}. "
         "Do not repeat measurements and do not make medical claims."
     )
-    response = httpx.post(
+    try:
+        response = httpx.post(
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         headers={"Authorization": f"Bearer {settings.google_api_key}"},
         json={
@@ -36,10 +41,12 @@ def get_realtime_status(
             "temperature": 0.4,
         },
         timeout=8,
-    )
-    response.raise_for_status()
-    text = response.json()["choices"][0]["message"]["content"].strip()
-    return text, "google", settings.google_model
+        )
+        response.raise_for_status()
+        text = response.json()["choices"][0]["message"]["content"].strip()
+        return text, "google", settings.google_model
+    except (httpx.HTTPError, KeyError, TypeError, ValueError):
+        return _realtime_fallback(request)
 
 
 def get_session_summary(
@@ -66,7 +73,8 @@ def get_session_summary(
         f"{request.angle_min} to {request.angle_max}. Notes: {', '.join(request.form_notes)}. "
         f"Language: {request.language}."
     )
-    response = httpx.post(
+    try:
+        response = httpx.post(
         "https://api.sarvam.ai/v1/chat/completions",
         headers={"Authorization": f"Bearer {settings.sarvam_api_key}"},
         json={
@@ -76,7 +84,14 @@ def get_session_summary(
             "temperature": 0.45,
         },
         timeout=20,
-    )
-    response.raise_for_status()
-    text = response.json()["choices"][0]["message"]["content"].strip()
-    return text, "sarvam", settings.sarvam_model
+        )
+        response.raise_for_status()
+        text = response.json()["choices"][0]["message"]["content"].strip()
+        return text, "sarvam", settings.sarvam_model
+    except (httpx.HTTPError, KeyError, TypeError, ValueError):
+        return (
+            f"You completed {request.total_reps} reps in {request.duration_seconds} seconds. "
+            "Keep a controlled tempo and consistent alignment next session.",
+            "biomechanics",
+            "rule-based-v1",
+        )

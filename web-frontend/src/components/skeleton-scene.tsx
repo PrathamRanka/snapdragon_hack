@@ -37,13 +37,14 @@ function normalizedJoints(joints: Record<string, Joint3D>) {
   ];
   const height = Math.max(Math.max(...ys) - Math.min(...ys), 0.001);
   const scale = 3.55 / height;
+  const maxDepth = height * 0.75;
   return Object.fromEntries(
     entries.map(([id, point]) => [
       id,
       [
         (point[0] - center[0]) * scale,
-        (point[1] - center[1]) * scale,
-        (point[2] - center[2]) * scale,
+        -(point[1] - center[1]) * scale,
+        Math.max(-maxDepth, Math.min(maxDepth, point[2] - center[2])) * scale,
       ] satisfies Vector3Tuple,
     ]),
   );

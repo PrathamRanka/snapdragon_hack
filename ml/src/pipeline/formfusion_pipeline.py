@@ -71,6 +71,26 @@ class FormFusionPipeline:
         }
         self.world_transform = np.asarray(calibration.world_transform, dtype=np.float64)
 
+    def _observation_angle(self, point_maps: dict[str, dict[int, object]]) -> float | None:
+        angles: list[float] = []
+        first, vertex, third = self.definition.joint_ids
+        for points in point_maps.values():
+            if not all(joint in points for joint in (first, vertex, third)):
+                continue
+            a, b, c = points[first], points[vertex], points[third]
+            if min(a.confidence, b.confidence, c.confidence) < self.minimum_confidence:
+                continue
+            angles.append(
+                float(
+                    calculate_angle_3d(
+                        np.asarray([a.x, a.y, 0.0]),
+                        np.asarray([b.x, b.y, 0.0]),
+                        np.asarray([c.x, c.y, 0.0]),
+                    )
+                )
+            )
+        return float(np.median(angles)) if angles else None
+
     def process(self, request: ReconstructionRequest) -> ReconstructionResult:
         started = time.perf_counter()
         by_device = {observation.device_id: observation for observation in request.observations}
@@ -125,11 +145,15 @@ class FormFusionPipeline:
 
         primary_angle: float | None = None
         angles: list[AngleMetric] = []
-        if all(joint in vectors for joint in self.definition.joint_ids):
+        approximate = self.calibration.calibration_id.startswith("approximate-")
+        if approximate:
+            primary_angle = self._observation_angle(point_maps)
+        elif all(joint in vectors for joint in self.definition.joint_ids):
             first, vertex, third = self.definition.joint_ids
             primary_angle = float(
                 calculate_angle_3d(vectors[first], vectors[vertex], vectors[third])
             )
+        if primary_angle is not None:
             angles.append(
                 AngleMetric(
                     name=self.definition.angle_name,
