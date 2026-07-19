@@ -6,17 +6,26 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "lucide-react": "^1.25.0",
     "next": "^16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.82.0",
+    "react-use-websocket": "^4.13.0",
     "recharts": "^3.9.2",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "usehooks-ts": "^3.1.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/node": "^20",
