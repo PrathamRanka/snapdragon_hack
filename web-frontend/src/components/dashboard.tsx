@@ -71,6 +71,9 @@ export function Dashboard() {
     if (!config) {
       return <StageMessage title="Connect a live session" detail="Enter the backend session credentials above." />;
     }
+    if (sessionQuery.isLoading) {
+      return <StageMessage title="Loading session" detail="Checking device and calibration state…" />;
+    }
     if (sessionQuery.isError) {
       return <StageMessage title="Session unavailable" detail="The backend did not return this session." />;
     }
@@ -86,11 +89,14 @@ export function Dashboard() {
     if (!latest) {
       return <StageMessage title="Waiting for synchronized frames" detail="Both phones are connected; no 3D result has arrived yet." />;
     }
+    if (!Object.keys(latest.joints_3d).length) {
+      return <StageMessage title="No valid joints in this frame" detail="The viewport will resume when both cameras return confident matching keypoints." />;
+    }
     if (stale) {
       return <StageMessage title="Live data paused" detail="The last pose result is stale. Reconnecting without clearing the session." />;
     }
     return <SkeletonScene joints={latest.joints_3d} />;
-  }, [config, devices, latest, phase, session, sessionQuery.isError, stale]);
+  }, [config, devices, latest, phase, session, sessionQuery.isError, sessionQuery.isLoading, stale]);
 
   const quality = latest?.form_quality;
   const qualityLabel = quality === "good" ? "Good rep" : quality === "check" ? "Check form" : "Awaiting assessment";
