@@ -94,7 +94,7 @@ fun CalibrationScreen(onComplete: () -> Unit, onLeave: () -> Unit) {
         ) {
             Text("Stereo calibration", style = MaterialTheme.typography.headlineSmall, color = Color.White)
             Text(
-                "Both phones: frame the same 9×6 checkerboard, then capture pair ${state.captureNumber + 1}. Move the board between captures.",
+                "Both phones: frame the full 8×8 chessboard (7×7 inner corners), then capture pair ${state.captureNumber + 1}. Move the board between captures.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.82f)
             )

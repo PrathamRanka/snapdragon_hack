@@ -112,7 +112,7 @@ must allow inbound TCP 8000, and both phones must be able to reach the computer 
    session ID, and join code.
 4. On phone B choose **Join Session** and scan that QR. It joins the same backend session with
    its stable device ID.
-5. Both phones enter calibration. Show the same 9×6 checkerboard to both cameras. For each board
+5. Both phones enter calibration. Show the same 8×8 chessboard (7×7 inner corners) to both cameras. For each board
    position, tap the same numbered capture on both phones. Capture at least 10 varied positions.
 6. Phone A finalizes calibration. Both phones show the real reprojection error returned by ML.
 7. Start the workout on both phones. Their on-device RTM outputs stream at approximately 12 FPS;
