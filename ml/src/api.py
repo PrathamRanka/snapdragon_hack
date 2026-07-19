@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import anyio
+import cv2
 import structlog
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
 
@@ -117,7 +118,7 @@ async def finalize_calibration(
             request.square_size,
             request.minimum_pairs,
         )
-    except ValueError as error:
+    except (ValueError, cv2.error) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     await app.state.pipelines.delete(session_id)
     counts, complete, _ = app.state.calibrations.status(session_id)

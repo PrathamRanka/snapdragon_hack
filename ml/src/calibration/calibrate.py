@@ -3,6 +3,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.calibration.checkerboard import detect_checkerboard_corners
+
 
 def calibrate_camera(
     image_paths: list[Path],
@@ -17,8 +19,6 @@ def calibrate_camera(
     object_points: list[np.ndarray] = []
     image_points: list[np.ndarray] = []
     image_size: tuple[int, int] | None = None
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
     for image_path in image_paths:
         grayscale = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
         if grayscale is None:
@@ -26,12 +26,12 @@ def calibrate_camera(
         current_size = (grayscale.shape[1], grayscale.shape[0])
         if image_size is not None and current_size != image_size:
             continue
-        found, corners = cv2.findChessboardCorners(grayscale, checkerboard)
-        if not found:
+        corners = detect_checkerboard_corners(grayscale, checkerboard)
+        if corners is None:
             continue
         image_size = current_size
         object_points.append(object_template.copy())
-        image_points.append(cv2.cornerSubPix(grayscale, corners, (11, 11), (-1, -1), criteria))
+        image_points.append(corners)
 
     if image_size is None or len(object_points) < minimum_images:
         raise ValueError(

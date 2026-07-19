@@ -113,7 +113,7 @@ fun CalibrationScreen(onComplete: () -> Unit, onLeave: () -> Unit) {
                 .background(Color.Black.copy(alpha = 0.62f)).padding(Spacing.lg)
         ) {
             if (!state.calibrated) {
-                PrimaryButton(
+                SecondaryButton(
                     text = if (state.uploading) "Uploading…" else "Capture pair ${state.captureNumber + 1}",
                     enabled = !state.uploading && state.captureNumber < 10,
                     onClick = {
@@ -135,12 +135,20 @@ fun CalibrationScreen(onComplete: () -> Unit, onLeave: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (SessionManager.role == Role.HOST) {
-                    SecondaryButton(
+                    PrimaryButton(
                         text = if (state.finalizing) "Calibrating…" else "Finalize calibration",
                         enabled = state.completePairs >= 10 && !state.finalizing,
                         onClick = viewModel::finalizeCalibration,
                         modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
                     )
+                    if (state.completePairs < 10) {
+                        Text(
+                            text = "Finalize unlocks after 10 matching pairs",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(top = Spacing.xs)
+                        )
+                    }
                 }
             } else {
                 PrimaryButton(

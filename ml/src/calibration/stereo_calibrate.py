@@ -3,6 +3,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.calibration.checkerboard import detect_checkerboard_corners
+
 
 def stereo_calibrate(
     paired_paths: list[tuple[Path, Path]],
@@ -25,19 +27,19 @@ def stereo_calibrate(
     for path_a, path_b in paired_paths:
         gray_a = cv2.imread(str(path_a), cv2.IMREAD_GRAYSCALE)
         gray_b = cv2.imread(str(path_b), cv2.IMREAD_GRAYSCALE)
-        if gray_a is None or gray_b is None or gray_a.shape != gray_b.shape:
+        if gray_a is None or gray_b is None:
             continue
         current_size = (gray_a.shape[1], gray_a.shape[0])
         if image_size is not None and current_size != image_size:
             continue
-        found_a, corners_a = cv2.findChessboardCorners(gray_a, checkerboard)
-        found_b, corners_b = cv2.findChessboardCorners(gray_b, checkerboard)
-        if not found_a or not found_b:
+        corners_a = detect_checkerboard_corners(gray_a, checkerboard)
+        corners_b = detect_checkerboard_corners(gray_b, checkerboard)
+        if corners_a is None or corners_b is None:
             continue
         image_size = current_size
         object_points.append(object_template.copy())
-        image_points_a.append(cv2.cornerSubPix(gray_a, corners_a, (11, 11), (-1, -1), criteria))
-        image_points_b.append(cv2.cornerSubPix(gray_b, corners_b, (11, 11), (-1, -1), criteria))
+        image_points_a.append(corners_a)
+        image_points_b.append(corners_b)
 
     if image_size is None or len(object_points) < minimum_pairs:
         raise ValueError(f"need {minimum_pairs} usable stereo pairs; found {len(object_points)}")
