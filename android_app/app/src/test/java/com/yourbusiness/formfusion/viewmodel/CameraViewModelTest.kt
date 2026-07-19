@@ -9,6 +9,8 @@ import com.yourbusiness.formfusion.pose.PersonPose
 import com.yourbusiness.formfusion.pose.PoseEstimator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -55,8 +57,10 @@ class CameraViewModelTest {
 
     private fun newViewModel(
         personDetector: PersonDetector = FakePersonDetector(),
-        poseEstimator: PoseEstimator = FakePoseEstimator()
-    ): CameraViewModel = CameraViewModel(mock(Context::class.java), personDetector, poseEstimator)
+        poseEstimator: PoseEstimator = FakePoseEstimator(),
+        elapsedRealtime: () -> Long = { 0L }
+    ): CameraViewModel =
+        CameraViewModel(mock(Context::class.java), personDetector, poseEstimator, elapsedRealtime)
 
     private fun person(keypointCount: Int) = PersonPose(
         box = BoundingBox(0f, 0f, 10f, 10f, 0.9f),
@@ -133,6 +137,33 @@ class CameraViewModelTest {
         val stateAfterFirst = vm.uiState.value
         vm.endSession()
         assertEquals(stateAfterFirst, vm.uiState.value)
+    }
+
+    @Test
+    fun `endSession emits a SessionEnded event with the elapsed duration in whole seconds`() {
+        var now = 1_000_000L
+        val vm = newViewModel(elapsedRealtime = { now })
+        now += 42_500L // 42.5s later — truncates to 42 whole seconds
+
+        vm.endSession()
+        dispatcher.scheduler.advanceUntilIdle() // pump the coroutine that sends the event
+
+        val event = runBlocking { vm.events.first() }
+        assertTrue(event is CameraEvent.SessionEnded)
+        assertEquals(42L, (event as CameraEvent.SessionEnded).durationSeconds)
+    }
+
+    @Test
+    fun `endSession reports durations of a minute or more correctly in seconds`() {
+        var now = 0L
+        val vm = newViewModel(elapsedRealtime = { now })
+        now += 125_000L // 2m 5s
+
+        vm.endSession()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val event = runBlocking { vm.events.first() } as CameraEvent.SessionEnded
+        assertEquals(125L, event.durationSeconds)
     }
 
     @Test

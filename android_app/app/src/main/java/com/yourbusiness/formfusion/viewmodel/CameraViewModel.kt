@@ -1,6 +1,7 @@
 package com.yourbusiness.formfusion.viewmodel
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import com.yourbusiness.formfusion.pose.PersonDetector
 import com.yourbusiness.formfusion.pose.PersonPose
@@ -8,9 +9,12 @@ import com.yourbusiness.formfusion.pose.PoseEstimator
 import com.yourbusiness.formfusion.pose.RtmDetDetector
 import com.yourbusiness.formfusion.pose.RtmPoseOnnxEstimator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,6 +28,10 @@ data class CameraUiState(
     val isSessionActive: Boolean = true
 )
 
+sealed interface CameraEvent {
+    data class SessionEnded(val durationSeconds: Long) : CameraEvent
+}
+
 /**
  * Owns the full detection + pose pipeline (RTMDet -> RTMPose) and frame counting.
  * CameraScreen only wires the CameraX analyzer to [personDetector]/[poseEstimator] and
@@ -31,12 +39,14 @@ data class CameraUiState(
  *
  * [personDetector]/[poseEstimator] default to the real RTMDet/RTMPose implementations but
  * are constructor-injectable so tests can substitute fakes without touching TFLite/ONNX
- * Runtime or Android's Bitmap/Context.
+ * Runtime or Android's Bitmap/Context. [elapsedRealtime] defaults to the real clock but is
+ * injectable too, so session-duration tests don't depend on wall-clock timing.
  */
 class CameraViewModel(
     context: Context,
     val personDetector: PersonDetector = RtmDetDetector(context.applicationContext),
-    val poseEstimator: PoseEstimator = RtmPoseOnnxEstimator(context.applicationContext)
+    val poseEstimator: PoseEstimator = RtmPoseOnnxEstimator(context.applicationContext),
+    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() }
 ) : BaseViewModel() {
 
     companion object {
@@ -46,10 +56,17 @@ class CameraViewModel(
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
 
+    private val _events = Channel<CameraEvent>(Channel.BUFFERED)
+    val events: Flow<CameraEvent> = _events.receiveAsFlow()
+
     // Raw per-frame pipeline output collected for the running session, dumped to
     // Logcat by endSession() — for now this is the only way to check the models'
     // output, since there's no on-screen box/skeleton overlay yet.
     private val sessionFrames = mutableListOf<List<PersonPose>>()
+
+    // Session "start" is when this screen/ViewModel is created — there's no separate
+    // Start button, the camera begins analyzing immediately on entering the screen.
+    private val sessionStartTime = elapsedRealtime()
 
     init {
         viewModelScope.launch(Dispatchers.Default) {
@@ -77,7 +94,10 @@ class CameraViewModel(
         if (!_uiState.value.isSessionActive) return
         _uiState.update { it.copy(isSessionActive = false) }
 
-        Log.i(TAG, "===== Session ended: ${sessionFrames.size} frames analyzed =====")
+        val durationSeconds = (elapsedRealtime() - sessionStartTime) / 1000
+        viewModelScope.launch { _events.send(CameraEvent.SessionEnded(durationSeconds)) }
+
+        Log.i(TAG, "===== Session ended: ${sessionFrames.size} frames analyzed, duration=${durationSeconds}s =====")
         sessionFrames.forEachIndexed { frameIndex, persons ->
             if (persons.isEmpty()) {
                 Log.i(TAG, "frame $frameIndex: no persons detected")

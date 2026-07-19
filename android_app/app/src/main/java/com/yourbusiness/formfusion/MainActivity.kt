@@ -26,10 +26,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FormFusionApp() {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
+    // Screen-enum navigation carries no arguments, so the just-finished session's duration
+    // is held here and read by SessionSummaryScreen right after CameraScreen sets it.
+    var lastSessionDurationSeconds by remember { mutableStateOf(0L) }
 
     when (currentScreen) {
         Screen.Home -> HomeScreen(onNavigate = { currentScreen = it })
-        Screen.Camera -> CameraScreen(onBack = { currentScreen = Screen.Home })
+        Screen.Camera -> CameraScreen(
+            onBack = { currentScreen = Screen.Home },
+            onSessionEnded = { durationSeconds ->
+                lastSessionDurationSeconds = durationSeconds
+                currentScreen = Screen.SessionSummary
+            }
+        )
+        Screen.SessionSummary -> SessionSummaryScreen(
+            durationSeconds = lastSessionDurationSeconds,
+            onDone = { currentScreen = Screen.Home }
+        )
         Screen.MultiPhonePlaceholder -> MultiPhonePlaceholderScreen(onBack = { currentScreen = Screen.Home })
         Screen.Role -> RoleScreen(
             onHost = { currentScreen = Screen.Host },

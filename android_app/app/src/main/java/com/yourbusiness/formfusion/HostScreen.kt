@@ -1,12 +1,22 @@
 package com.yourbusiness.formfusion
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -17,9 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.yourbusiness.formfusion.ui.components.PrimaryButton
+import com.yourbusiness.formfusion.ui.components.SectionHeader
+import com.yourbusiness.formfusion.ui.components.StatusChip
+import com.yourbusiness.formfusion.ui.components.StatusTone
+import com.yourbusiness.formfusion.ui.components.SurfaceCard
+import com.yourbusiness.formfusion.ui.components.TertiaryTextButton
+import com.yourbusiness.formfusion.ui.theme.Spacing
+import com.yourbusiness.formfusion.ui.theme.Success
 import com.yourbusiness.formfusion.viewmodel.HostEvent
 import com.yourbusiness.formfusion.viewmodel.HostViewModel
 
@@ -47,47 +63,73 @@ fun HostScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(Spacing.xl),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Session: ${uiState.sessionId}",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold
+        SectionHeader(
+            title = "Host Session",
+            subtitle = "Session ${uiState.sessionId}",
+            modifier = Modifier.fillMaxWidth()
         )
 
-        uiState.qrBitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = "Session QR code",
-                modifier = Modifier
-                    .padding(24.dp)
-                    .size(240.dp)
-            )
-        }
+        Spacer(modifier = Modifier.height(Spacing.xl))
 
-        Text("${uiState.connectedCount} phone${if (uiState.connectedCount == 1) "" else "s"} connected")
+        SurfaceCard {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                uiState.qrBitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = "Session QR code",
+                        modifier = Modifier
+                            .padding(vertical = Spacing.md)
+                            .size(220.dp)
+                    )
+                }
 
-        Column(modifier = Modifier.padding(top = 8.dp)) {
-            for (i in 1..uiState.connectedCount) {
-                Text("Phone $i ✓")
+                StatusChip(
+                    text = "${uiState.connectedCount} phone${if (uiState.connectedCount == 1) "" else "s"} connected",
+                    tone = if (uiState.connectedCount > 0) StatusTone.Success else StatusTone.Neutral
+                )
             }
         }
 
-        Button(
-            onClick = viewModel::onStartSessionClicked,
-            enabled = uiState.canStartSession,
-            modifier = Modifier.padding(top = 24.dp)
-        ) {
-            Text("Start Session")
+        if (uiState.connectedCount > 0) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.lg)
+            ) {
+                for (i in 1..uiState.connectedCount) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = Spacing.xs)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = Success,
+                            modifier = Modifier.padding(end = Spacing.xs)
+                        )
+                        Text("Phone $i", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
 
-        Button(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text("Back")
-        }
+        PrimaryButton(
+            text = "Start Session",
+            onClick = viewModel::onStartSessionClicked,
+            enabled = uiState.canStartSession,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Spacing.xxl)
+        )
+
+        TertiaryTextButton(text = "Back", onClick = onBack)
     }
 }

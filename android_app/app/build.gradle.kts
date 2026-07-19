@@ -74,6 +74,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
+    // Outlined/rounded icon set used throughout the redesigned UI (chevrons, status icons,
+    // etc.) — the default icon set bundled with material3 only covers a handful of glyphs.
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.camera.core)

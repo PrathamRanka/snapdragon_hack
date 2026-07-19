@@ -1,18 +1,24 @@
 package com.yourbusiness.formfusion
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.yourbusiness.formfusion.ui.components.PrimaryButton
+import com.yourbusiness.formfusion.ui.components.SecondaryButton
+import com.yourbusiness.formfusion.ui.components.SectionHeader
+import com.yourbusiness.formfusion.ui.components.TertiaryTextButton
+import com.yourbusiness.formfusion.ui.theme.Spacing
 import com.yourbusiness.formfusion.viewmodel.RoleEvent
 import com.yourbusiness.formfusion.viewmodel.RoleViewModel
 
@@ -40,28 +46,39 @@ fun RoleScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(Spacing.xl),
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Start with Other Phones")
+        SectionHeader(
+            title = "Start with Other Phones",
+            subtitle = "Host a multi-angle session or join one nearby"
+        )
 
-        Button(onClick = onHost) {
-            Text("Host Session")
-        }
+        PrimaryButton(
+            text = "Host Session",
+            onClick = onHost,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Spacing.xxl)
+        )
 
-        Button(onClick = {
-            launchQrScanner(
-                context = context,
-                onResult = viewModel::onQrScanned,
-                onError = viewModel::onScanFailed
-            )
-        }) {
-            Text("Join Session")
-        }
+        SecondaryButton(
+            text = "Join Session",
+            onClick = {
+                launchQrScanner(
+                    context = context,
+                    onResult = viewModel::onQrScanned,
+                    onError = viewModel::onScanFailed
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Spacing.md)
+        )
 
-        Button(onClick = onBack) {
-            Text("Back")
-        }
+        TertiaryTextButton(text = "Back", onClick = onBack)
     }
 }

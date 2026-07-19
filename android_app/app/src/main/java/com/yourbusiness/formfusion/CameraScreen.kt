@@ -6,14 +6,24 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,7 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,6 +46,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.yourbusiness.formfusion.camera.CameraPreview
 import com.yourbusiness.formfusion.camera.PoseOverlay
 import com.yourbusiness.formfusion.pose.PoseAnalyzer
+import com.yourbusiness.formfusion.ui.components.PrimaryButton
+import com.yourbusiness.formfusion.ui.components.SecondaryButton
+import com.yourbusiness.formfusion.ui.theme.Spacing
+import com.yourbusiness.formfusion.viewmodel.CameraEvent
 import com.yourbusiness.formfusion.viewmodel.CameraViewModel
 import java.util.concurrent.Executors
 
@@ -40,7 +57,7 @@ import java.util.concurrent.Executors
 // Camera permission state stays here — it's Android UI plumbing (ActivityResult APIs),
 // not business logic.
 @Composable
-fun CameraScreen(onBack: () -> Unit) {
+fun CameraScreen(onBack: () -> Unit, onSessionEnded: (durationSeconds: Long) -> Unit) {
     val context = LocalContext.current
 
     var hasCameraPermission by remember {
@@ -60,14 +77,36 @@ fun CameraScreen(onBack: () -> Unit) {
 
     if (!hasCameraPermission) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(Spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Camera permission needed")
-            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                Text("Grant permission")
-            }
+            Icon(
+                imageVector = Icons.Outlined.CameraAlt,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Spacing.md)
+            )
+            Text(
+                text = "Camera access needed",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "FormFusion needs your camera to analyze movement in real time.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = Spacing.xs, bottom = Spacing.xxl)
+            )
+            PrimaryButton(
+                text = "Grant permission",
+                onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
         return
     }
@@ -113,6 +152,16 @@ fun CameraScreen(onBack: () -> Unit) {
         }
     }
 
+    // Navigates to the summary screen the moment endSession() reports how long the
+    // session ran, instead of lingering here.
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is CameraEvent.SessionEnded -> onSessionEnded(event.durationSeconds)
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(controller = controller, modifier = Modifier.fillMaxSize())
 
@@ -124,32 +173,85 @@ fun CameraScreen(onBack: () -> Unit) {
             mirrorHorizontally = isFrontCamera
         )
 
-        Text(
-            text = if (uiState.isSessionActive) {
-                "Frames analyzed: ${uiState.frameCount}  |  persons: ${uiState.lastPersonCount}  |  keypoints: ${uiState.lastKeypointCount}"
-            } else {
-                "Session ended — ${uiState.frameCount} frames analyzed. Check Logcat (tag CameraViewModel) for the full pipeline output."
-            },
+        // Translucent scrim behind the top status row so it stays legible over any
+        // background, without ever fully blocking the camera feed underneath.
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .padding(16.dp)
-        )
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = Spacing.lg, vertical = Spacing.lg)
+        ) {
+            AnimatedVisibility(
+                visible = uiState.isSessionActive,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    LiveStatusMetric(label = "Frames", value = uiState.frameCount.toString())
+                    LiveStatusMetric(label = "Persons", value = uiState.lastPersonCount.toString())
+                    LiveStatusMetric(label = "Keypoints", value = uiState.lastKeypointCount.toString())
+                }
+            }
 
+            AnimatedVisibility(
+                visible = !uiState.isSessionActive,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    text = "Session ended — ${uiState.frameCount} frames analyzed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White
+                )
+            }
+        }
+
+        // Translucent scrim behind the bottom controls, same reasoning as above.
         Column(
             modifier = Modifier
+                .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(16.dp),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                    )
+                )
+                .padding(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (uiState.isSessionActive) {
-                Button(onClick = { viewModel.endSession() }) {
-                    Text("End Session")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+                PrimaryButton(
+                    text = "End Session",
+                    onClick = { viewModel.endSession() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
             }
-            Button(onClick = onBack) {
-                Text("Back")
-            }
+            SecondaryButton(
+                text = "Back",
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
+    }
+}
+
+@Composable
+private fun LiveStatusMetric(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+    ) {
+        Text(value, style = MaterialTheme.typography.titleMedium, color = Color.White)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
     }
 }
